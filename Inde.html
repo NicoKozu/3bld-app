@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Blind Cube Trainer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #555570;
+    --pair-bg: #1a1a2e;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* TOP: Ausgabe 1/3 */
+  #output-area {
+    height: 33dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px 6px;
+    border-bottom: 1px solid #222235;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  #output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  #output-header span {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  #clear-btn {
+    background: none;
+    border: 1px solid #333;
+    color: var(--muted);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #clear-btn:active { background: #222; }
+
+  #pairs-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .pair-chip {
+    background: var(--pair-bg);
+    border: 1px solid #2a2a45;
+    border-radius: 6px;
+    padding: 4px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 52px;
+  }
+
+  .pair-letters {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--accent);
+    letter-spacing: 2px;
+    line-height: 1.1;
+  }
+
+  .pair-word {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+  }
+
+  /* MIDDLE: Aktuelles Paar */
+  #current-pair {
+    height: 12dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: var(--bg);
+    border-bottom: 1px solid #1a1a2e;
+  }
+
+  #current-letters {
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: 8px;
+    color: var(--accent);
+    font-family: 'Courier New', monospace;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  #current-letters.has-one {
+    color: var(--accent2);
+  }
+
+  #current-word {
+    font-size: 13px;
+    color: var(--text);
+    opacity: 0.7;
+    max-width: 140px;
+    text-align: left;
+    font-style: italic;
+  }
+
+  /* BOTTOM: Tastatur 2/3 - naja ~55vh */
+  #keyboard {
+    flex: 1;
+    display: grid;
+    grid-template-rows: repeat(5, 1fr);
+    gap: 4px;
+    padding: 6px;
+    background: var(--bg);
+  }
+
+  .key-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .key {
+    flex: 1;
+    max-width: 13vw;
+    background: #1c1c28;
+    border: 1px solid #2a2a3e;
+    border-radius: 7px;
+    color: var(--text);
+    font-size: clamp(14px, 4vw, 20px);
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.08s, transform 0.08s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .key:active {
+    background: var(--accent);
+    color: var(--bg);
+    transform: scale(0.93);
+  }
+
+  .key.special {
+    background: #1a1a1a;
+    border-color: #333;
+    font-size: clamp(11px, 3vw, 14px);
+    color: var(--muted);
+    max-width: 18vw;
+  }
+
+  .key.special:active {
+    background: var(--accent2);
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div id="output-area">
+  <div id="output-header">
+    <span>Paare</span>
+    <button id="clear-btn" onclick="clearAll()">✕ Leeren</button>
+  </div>
+  <div id="pairs-display"></div>
+</div>
+
+<div id="current-pair">
+  <div id="current-letters">__</div>
+  <div id="current-word"></div>
+</div>
+
+<div id="keyboard">
+  <div class="key-row">
+    <div class="key" onclick="tap('Q')">Q</div>
+    <div class="key" onclick="tap('W')">W</div>
+    <div class="key" onclick="tap('E')">E</div>
+    <div class="key" onclick="tap('R')">R</div>
+    <div class="key" onclick="tap('T')">T</div>
+    <div class="key" onclick="tap('Y')">Y</div>
+    <div class="key" onclick="tap('U')">U</div>
+    <div class="key" onclick="tap('I')">I</div>
+    <div class="key" onclick="tap('O')">O</div>
+    <div class="key" onclick="tap('P')">P</div>
+  </div>
+  <div class="key-row">
+    <div class="key" onclick="tap('A')">A</div>
+    <div class="key" onclick="tap('S')">S</div>
+    <div class="key" onclick="tap('D')">D</div>
+    <div class="key" onclick="tap('F')">F</div>
+    <div class="key" onclick="tap('G')">G</div>
+    <div class="key" onclick="tap('H')">H</div>
+    <div class="key" onclick="tap('J')">J</div>
+    <div class="key" onclick="tap('K')">K</div>
+    <div class="key" onclick="tap('L')">L</div>
+  </div>
+  <div class="key-row">
+    <div class="key" onclick="tap('Z')">Z</div>
+    <div class="key" onclick="tap('X')">X</div>
+    <div class="key" onclick="tap('C')">C</div>
+    <div class="key" onclick="tap('V')">V</div>
+    <div class="key" onclick="tap('B')">B</div>
+    <div class="key" onclick="tap('N')">N</div>
+    <div class="key" onclick="tap('M')">M</div>
+  </div>
+  <div class="key-row">
+    <div class="key" onclick="tap('Ä')">Ä</div>
+    <div class="key" onclick="tap('Ö')">Ö</div>
+    <div class="key" onclick="tap('Ü')">Ü</div>
+    <div class="key special" onclick="deleteLast()">⌫</div>
+    <div class="key special" onclick="confirmPair()">OK ↵</div>
+  </div>
+</div>
+
+<script>
+// ======= MERKWÖRTER =======
+// Format: "XY": "Wort" — X = erster Buchstabe, Y irgendwo im Wort
+const words = {
+  // A
+  "AA":"Aaal","AB":"Abend","AC":"Acht","AD":"Adler","AE":"Affe","AF":"Affe","AG":"Agt","AH":"Ahne","AI":"Aida","AJ":"Ajax","AK":"Aktion","AL":"Album","AM":"Ampel","AN":"Anker","AO":"Aorta","AP":"Apfel","AQ":"Aqua","AR":"Arzt","AS":"Ast","AT":"Atlas","AU":"Auto","AV":"Avis","AW":"Award","AX":"Axt","AY":"Ayran","AZ":"Azon",
+  // B
+  "BA":"Bad","BB":"Bball","BC":"Buch","BD":"Boden","BE":"Beet","BF":"Buff","BG":"Bug","BH":"BH","BI":"Bild","BJ":"Boje","BK":"Block","BL":"Blatt","BM":"Baum","BN":"Bahn","BO":"Boot","BP":"Beppo","BQ":"Barq","BR":"Brot","BS":"Bus","BT":"Boot","BU":"Burg","BV":"Brav","BW":"Bowl","BX":"Box","BY":"Byte","BZ":"Benz",
+  // C
+  "CA":"Café","CB":"Cäb","CC":"Coco","CD":"Code","CE":"Cell","CF":"Chef","CG":"Clog","CH":"Chef","CI":"City","CJ":"Cuju","CK":"Crack","CL":"Club","CM":"Camo","CN":"Cyan","CO":"Cobra","CP":"Chip","CQ":"Cinq","CR":"Creme","CS":"Case","CT":"Cats","CU":"Cuba","CV":"Civic","CW":"Crew","CX":"Crux","CY":"Cyan","CZ":"Czel",
+  // D
+  "DA":"Dame","DB":"Deib","DC":"Dach","DD":"Dodo","DE":"Deck","DF":"Dorf","DG":"Drug","DH":"Dohe","DI":"Dino","DJ":"DJ","DK":"Dark","DL":"Dell","DM":"Damm","DN":"Dune","DO":"Dom","DP":"Depot","DQ":"Deq","DR":"Drache","DS":"Dose","DT":"Dat","DU":"Duft","DV":"Diva","DW":"Dwarf","DX":"Detox","DY":"Dyno","DZ":"Dez",
+  // E
+  "EA":"Eagle","EB":"Ebbe","EC":"Echo","ED":"Eden","EE":"Esel","EF":"Elf","EG":"Ego","EH":"Ehe","EI":"Ei","EJ":"Ejek","EK":"Eck","EL":"Elch","EM":"Emil","EN":"Ende","EO":"Eon","EP":"Epos","EQ":"Equip","ER":"Erbe","ES":"Esel","ET":"Etat","EU":"Euro","EV":"Event","EW":"Ewig","EX":"Exil","EY":"Eye","EZ":"Ezel",
+  // F
+  "FA":"Fahne","FB":"Fabel","FC":"Fach","FD":"Faden","FE":"Fest","FF":"Fell","FG":"Flag","FH":"Fehde","FI":"Film","FJ":"Fjord","FK":"Fork","FL":"Flagge","FM":"Farm","FN":"Funke","FO":"Form","FP":"Pfad","FQ":"Freq","FR":"Frosch","FS":"Fass","FT":"Fett","FU":"Fuchs","FV":"Fave","FW":"Few","FX":"Fox","FY":"Fyrd","FZ":"Fizz",
+  // G
+  "GA":"Gabel","GB":"Gabe","GC":"Gecko","GD":"Gold","GE":"Geist","GF":"Griff","GG":"Gong","GH":"Ghost","GI":"Gift","GJ":"Goji","GK":"Geck","GL":"Glas","GM":"Gram","GN":"Gnu","GO":"Gott","GP":"Grips","GQ":"Grq","GR":"Grube","GS":"Gasse","GT":"Gut","GU":"Guru","GV":"Gravel","GW":"Gewalt","GX":"Gex","GY":"Gym","GZ":"Gaze",
+  // H
+  "HA":"Haus","HB":"Herb","HC":"Hoch","HD":"Hund","HE":"Held","HF":"Heft","HG":"Hügel","HH":"Huhn","HI":"Hirsch","HJ":"Hoja","HK":"Hook","HL":"Halle","HM":"Helm","HN":"Horn","HO":"Hof","HP":"Haupt","HQ":"HQ","HR":"Herz","HS":"Hase","HT":"Hut","HU":"Hund","HV":"Havel","HW":"Howl","HX":"Hex","HY":"Hyäne","HZ":"Holz",
+  // I
+  "IA":"Inka","IB":"Ibis","IC":"Igel","ID":"Idol","IE":"Igel","IF":"Infu","IG":"Iglu","IH":"Ihm","II":"Impi","IJ":"Ikej","IK":"Ikone","IL":"Ilse","IM":"Imker","IN":"Insel","IO":"Ion","IP":"Impf","IQ":"IQ","IR":"Iris","IS":"Isch","IT":"Iter","IU":"Iuu","IV":"Ivo","IW":"Iwi","IX":"Index","IY":"Iy","IZ":"Igel",
+  // J
+  "JA":"Jagd","JB":"Jabo","JC":"Jack","JD":"Jade","JE":"Jeans","JF":"Jeff","JG":"Jog","JH":"Jehu","JI":"Jib","JJ":"Jojo","JK":"Joker","JL":"Joel","JM":"Jam","JN":"Jun","JO":"Joghurt","JP":"Jeep","JQ":"Jqq","JR":"Jahr","JS":"Jass","JT":"Jet","JU":"Jung","JV":"Java","JW":"Jaw","JX":"Jux","JY":"Joy","JZ":"Jazz",
+  // K
+  "KA":"Karte","KB":"Kabel","KC":"Koch","KD":"Kind","KE":"Keks","KF":"Kopf","KG":"Käfig","KH":"Kahn","KI":"King","KJ":"Koje","KK":"Kork","KL":"Klang","KM":"Kamm","KN":"Knie","KO":"Kohl","KP":"Knopf","KQ":"Kq","KR":"Kreis","KS":"Kasse","KT":"Kette","KU":"Kugel","KV":"Kurve","KW":"Qual","KX":"Kex","KY":"Kite","KZ":"Kurz",
+  // L
+  "LA":"Lampe","LB":"Laub","LC":"Loch","LD":"Land","LE":"Leder","LF":"Luft","LG":"Lager","LH":"Leh","LI":"Licht","LJ":"Loja","LK":"Lacke","LL":"Lull","LM":"Lehm","LN":"Linie","LO":"Loch","LP":"Lippe","LQ":"Lq","LR":"Lärm","LS":"Lasso","LT":"Last","LU":"Luft","LV":"Lava","LW":"Low","LX":"Lux","LY":"Lyre","LZ":"Lenz",
+  // M
+  "MA":"Mann","MB":"Mob","MC":"Mach","MD":"Mond","ME":"Meer","MF":"Muffe","MG":"Magen","MH":"Mahd","MI":"Milch","MJ":"Mojo","MK":"Mark","ML":"Mahl","MM":"Mumm","MN":"Mine","MO":"Moos","MP":"Mops","MQ":"Mq","MR":"Moor","MS":"Mast","MT":"Matte","MU":"Mut","MV":"Movie","MW":"Mow","MX":"Mix","MY":"Mythos","MZ":"Metz",
+  // N
+  "NA":"Nacht","NB":"Nabe","NC":"Nock","ND":"Nord","NE":"Netz","NF":"Nife","NG":"Nagel","NH":"Naht","NI":"Nick","NJ":"Ninja","NK":"Nackt","NL":"Null","NM":"Nimm","NN":"Nonne","NO":"Note","NP":"Nopf","NQ":"Nq","NR":"Nori","NS":"Nuss","NT":"Note","NU":"Nugget","NV":"Nova","NW":"Now","NX":"Nex","NY":"Nylon","NZ":"Netz",
+  // O
+  "OA":"Oase","OB":"Obst","OC":"Ofen","OD":"Ode","OE":"Ofen","OF":"Ofen","OG":"Organ","OH":"Ohm","OI":"Öl","OJ":"Ojo","OK":"Okay","OL":"Öl","OM":"Oma","ON":"Ofen","OO":"Ozon","OP":"Oper","OQ":"Oq","OR":"Ort","OS":"Ost","OT":"Otter","OU":"Out","OV":"Oval","OW":"Owl","OX":"Ochse","OY":"Oy","OZ":"Oz",
+  // P
+  "PA":"Park","PB":"Pub","PC":"Pack","PD":"Pfad","PE":"Pest","PF":"Pfeil","PG":"Plug","PH":"Phon","PI":"Pilot","PJ":"Poje","PK":"Pack","PL":"Plan","PM":"Palm","PN":"Panne","PO":"Post","PP":"Puppe","PQ":"Pq","PR":"Preis","PS":"Pst","PT":"Punkt","PU":"Puls","PV":"Pivot","PW":"Pawl","PX":"Pex","PY":"Python","PZ":"Pelz",
+  // Q
+  "QA":"Qual","QB":"Qb","QC":"Qc","QD":"Qd","QE":"Qe","QF":"Qf","QG":"Qg","QH":"Qh","QI":"Qi","QJ":"Qj","QK":"Qk","QL":"Ql","QM":"Qm","QN":"Qn","QO":"Qo","QP":"Qp","QQ":"Qq","QR":"QR","QS":"Qs","QT":"Qt","QU":"Quiz","QV":"Qv","QW":"Qw","QX":"Qx","QY":"Qy","QZ":"Qz",
+  // R
+  "RA":"Rad","RB":"Rabe","RC":"Rock","RD":"Rand","RE":"Rest","RF":"Riff","RG":"Ring","RH":"Rehe","RI":"Ring","RJ":"Roji","RK":"Rack","RL":"Roll","RM":"Raum","RN":"Rune","RO":"Rose","RP":"Raps","RQ":"Rq","RR":"Rohr","RS":"Ross","RT":"Rost","RU":"Ruhe","RV":"Revo","RW":"Row","RX":"Rex","RY":"Rye","RZ":"Ritz",
+  // S
+  "SA":"Sand","SB":"Sob","SC":"Schach","SD":"Sand","SE":"See","SF":"Stoff","SG":"Sog","SH":"Schuh","SI":"Silo","SJ":"Soja","SK":"Ski","SL":"Slam","SM":"Smog","SN":"Snack","SO":"Sofa","SP":"Spur","SQ":"Sq","SR":"Strom","SS":"Sss","ST":"Stab","SU":"Sumo","SV":"Servo","SW":"Swap","SX":"Sex","SY":"Syrup","SZ":"Sitz",
+  // T
+  "TA":"Tafel","TB":"Tab","TC":"Tech","TD":"Tad","TE":"Test","TF":"Tief","TG":"Tag","TH":"Thron","TI":"Tiger","TJ":"Tojo","TK":"Takt","TL":"Tal","TM":"Team","TN":"Ton","TO":"Topf","TP":"Tipp","TQ":"Tq","TR":"Traum","TS":"Tasse","TT":"Tett","TU":"Turm","TV":"TV","TW":"Twist","TX":"Text","TY":"Typ","TZ":"Trotz",
+  // U
+  "UA":"Uhr","UB":"Uber","UC":"Ufer","UD":"Und","UE":"Übel","UF":"Ufer","UG":"Ugel","UH":"Uhr","UI":"Uiui","UJ":"Uj","UK":"UK","UL":"Ulme","UM":"Umweg","UN":"Unke","UO":"Uo","UP":"Ufer","UQ":"Uq","UR":"Urne","US":"USA","UT":"Utop","UU":"Uhu","UV":"UV","UW":"Uwi","UX":"Unix","UY":"Uy","UZ":"Uzi",
+  // V
+  "VA":"Vasen","VB":"Verb","VC":"Volk","VD":"Vad","VE":"Vest","VF":"Vif","VG":"Vag","VH":"Vah","VI":"Villa","VJ":"VJ","VK":"Volk","VL":"Vel","VM":"Vamp","VN":"Van","VO":"Vogel","VP":"VP","VQ":"Vq","VR":"Vrr","VS":"Vase","VT":"Vet","VU":"Vulkan","VV":"Vv","VW":"VW","VX":"Vex","VY":"Vinyl","VZ":"Viz",
+  // W
+  "WA":"Wald","WB":"Web","WC":"WC","WD":"Wand","WE":"Welt","WF":"Wolf","WG":"Weg","WH":"Wahl","WI":"Wild","WJ":"Woj","WK":"Werk","WL":"Well","WM":"Worm","WN":"Wein","WO":"Wolf","WP":"Whip","WQ":"Wq","WR":"Wrack","WS":"Wasser","WT":"Watt","WU":"Wurm","WV":"Wave","WW":"WoWo","WX":"Wax","WY":"Why","WZ":"Witz",
+  // X
+  "XA":"Xaver","XB":"Xb","XC":"Xc","XD":"Xd","XE":"Xeno","XF":"Xf","XG":"Xg","XH":"Xh","XI":"Xi","XJ":"Xj","XK":"Xk","XL":"XL","XM":"Xm","XN":"Xn","XO":"Xo","XP":"XP","XQ":"Xq","XR":"Xr","XS":"Xs","XT":"Xt","XU":"Xu","XV":"Xv","XW":"Xw","XX":"Xx","XY":"Xylophon","XZ":"Xz",
+  // Y
+  "YA":"Yak","YB":"Yb","YC":"Yc","YD":"Yd","YE":"Yeti","YF":"Yf","YG":"Yg","YH":"Yh","YI":"Yi","YJ":"Yj","YK":"Yk","YL":"Yl","YM":"Ym","YN":"Yn","YO":"Yoga","YP":"Yp","YQ":"Yq","YR":"Yr","YS":"Ys","YT":"Yt","YU":"Yuba","YV":"Yv","YW":"Yw","YX":"Yx","YY":"Yy","YZ":"Yz",
+  // Z
+  "ZA":"Zahn","ZB":"Zeb","ZC":"Zc","ZD":"Zed","ZE":"Zeit","ZF":"Zf","ZG":"Zug","ZH":"Zeh","ZI":"Ziege","ZJ":"Zj","ZK":"Zk","ZL":"Ziel","ZM":"Zoom","ZN":"Zone","ZO":"Zoo","ZP":"Zap","ZQ":"Zq","ZR":"Zirkel","ZS":"Zaum","ZT":"Zott","ZU":"Zug","ZV":"Zv","ZW":"Zwerg","ZX":"Zax","ZY":"Zy","ZZ":"Zzz",
+  // Umlaute
+  "ÄA":"Ähre","ÄB":"Äb","ÄC":"Äc","ÄD":"Äd","ÄE":"Äe","ÄF":"Äf","ÄG":"Äg","ÄH":"Äh","ÄI":"Äi","ÄJ":"Äj","ÄK":"Äk","ÄL":"Äl","ÄM":"Äm","ÄN":"Än","ÄO":"Äo","ÄP":"Äp","ÄQ":"Äq","ÄR":"Ärger","ÄS":"Äs","ÄT":"Ät","ÄU":"Äu","ÄV":"Äv","ÄW":"Äw","ÄX":"Äx","ÄY":"Äy","ÄZ":"Äz",
+  "ÖA":"Öa","ÖB":"Öb","ÖC":"Öc","ÖD":"Öd","ÖE":"Öe","ÖF":"Öf","ÖG":"Ög","ÖH":"Öh","ÖI":"Öi","ÖJ":"Öj","ÖK":"Öl","ÖL":"Öl","ÖM":"Öm","ÖN":"Ön","ÖO":"Öo","ÖP":"Öp","ÖQ":"Öq","ÖR":"Örtlich","ÖS":"Ös","ÖT":"Öt","ÖU":"Öu","ÖV":"Öv","ÖW":"Öw","ÖX":"Öx","ÖY":"Öy","ÖZ":"Öz",
+  "ÜA":"Üa","ÜB":"Übel","ÜC":"Üc","ÜD":"Üd","ÜE":"Üe","ÜF":"Üf","ÜG":"Üg","ÜH":"Üh","ÜI":"Üi","ÜJ":"Üj","ÜK":"Ük","ÜL":"Ül","ÜM":"Üm","ÜN":"Ün","ÜO":"Üo","ÜP":"Üp","ÜQ":"Üq","ÜR":"Ür","ÜS":"Üs","ÜT":"Üt","ÜU":"Üu","ÜV":"Üv","ÜW":"Üw","ÜX":"Üx","ÜY":"Üy","ÜZ":"Üz",
+};
+
+let current = "";
+
+function tap(letter) {
+  if (current.length >= 2) return;
+  current += letter;
+  updateDisplay();
+  if (current.length === 2) {
+    // Kurze Verzögerung dann auto-confirm optional — hier manuell per OK
+  }
+}
+
+function updateDisplay() {
+  const el = document.getElementById('current-letters');
+  const wordEl = document.getElementById('current-word');
+
+  if (current.length === 0) {
+    el.textContent = "__";
+    el.className = "";
+    wordEl.textContent = "";
+  } else if (current.length === 1) {
+    el.textContent = current + "_";
+    el.className = "has-one";
+    wordEl.textContent = "";
+  } else {
+    el.textContent = current;
+    el.className = "";
+    const w = words[current] || "?";
+    wordEl.textContent = w;
+  }
+}
+
+function deleteLast() {
+  current = current.slice(0, -1);
+  updateDisplay();
+}
+
+function confirmPair() {
+  if (current.length !== 2) return;
+  const pair = current;
+  const word = words[pair] || "?";
+  addChip(pair, word);
+  current = "";
+  updateDisplay();
+}
+
+function addChip(pair, word) {
+  const container = document.getElementById('pairs-display');
+  const chip = document.createElement('div');
+  chip.className = 'pair-chip';
+  chip.innerHTML = `<div class="pair-letters">${pair}</div><div class="pair-word">${word}</div>`;
+  chip.onclick = () => chip.remove();
+  container.appendChild(chip);
+  container.scrollTop = container.scrollHeight;
+}
+
+function clearAll() {
+  document.getElementById('pairs-display').innerHTML = '';
+  current = "";
+  updateDisplay();
+}
+</script>
+</body>
+</html>
